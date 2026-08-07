@@ -262,8 +262,8 @@ export class PostgresStoryRepository implements StoryRepository {
            s.author_user_id = $1
            OR EXISTS (
              SELECT 1 FROM friendships f
-             WHERE ((f.requester_user_id = $1 AND f.addressee_user_id = s.author_user_id)
-                OR  (f.addressee_user_id = $1 AND f.requester_user_id = s.author_user_id))
+             WHERE ((f.user_id_low = $1 AND f.user_id_high = s.author_user_id)
+                OR  (f.user_id_high = $1 AND f.user_id_low = s.author_user_id))
                AND f.status = 'accepted'
            )
          )

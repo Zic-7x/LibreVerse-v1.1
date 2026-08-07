@@ -29,13 +29,19 @@ export function validateCompleteUploadInput(input: {
   widthPx?: unknown;
   heightPx?: unknown;
   durationMs?: unknown;
+  publicUrl?: unknown;
 }): {
   checksumSha256?: string;
   widthPx?: number;
   heightPx?: number;
   durationMs?: number;
+  publicUrl?: string;
 } {
   const result: ReturnType<typeof validateCompleteUploadInput> = {};
+
+  if (input.publicUrl !== undefined && typeof input.publicUrl === "string") {
+    result.publicUrl = input.publicUrl;
+  }
 
   if (input.checksumSha256 !== undefined) {
     if (

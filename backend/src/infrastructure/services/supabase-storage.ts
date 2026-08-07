@@ -12,12 +12,24 @@ export function getSupabaseClient(): SupabaseClient | null {
     return null;
   }
 
-  // Sanitize URL if ending with /rest/v1 or trailing slashes
   const baseUrl = rawUrl.replace(/\/rest\/v1\/?$/, "").replace(/\/+$/, "");
 
-  supabaseInstance = createClient(baseUrl, key, {
-    auth: { persistSession: false },
-  });
+  // Validate before calling createClient — createClient throws synchronously on bad URLs
+  try {
+    new URL(baseUrl);
+  } catch {
+    console.error("[Supabase] SUPABASE_URL is not a valid URL:", rawUrl);
+    return null;
+  }
+
+  try {
+    supabaseInstance = createClient(baseUrl, key, {
+      auth: { persistSession: false },
+    });
+  } catch (err) {
+    console.error("[Supabase] createClient failed:", (err as Error).message);
+    return null;
+  }
 
   return supabaseInstance;
 }

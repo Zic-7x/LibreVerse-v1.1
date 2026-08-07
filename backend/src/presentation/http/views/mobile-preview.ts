@@ -3549,6 +3549,33 @@ export function getMobilePreviewHtml(): string {
       if (input) input.click();
     }
 
+    var messageHoldTimer = null;
+    var activeActionMsgId = null;
+
+    function startMessageHold(msgId, event) {
+      if (messageHoldTimer) clearTimeout(messageHoldTimer);
+      messageHoldTimer = setTimeout(function () {
+        openMessageActionMenu(msgId);
+      }, 450); // hold duration
+    }
+
+    function cancelMessageHold() {
+      if (messageHoldTimer) {
+        clearTimeout(messageHoldTimer);
+        messageHoldTimer = null;
+      }
+    }
+
+    function openMessageActionMenu(msgId) {
+      activeActionMsgId = msgId;
+      updateChatMessagesUI(); // re-render with menu open for this message
+    }
+
+    function closeMessageActionMenu() {
+      activeActionMsgId = null;
+      updateChatMessagesUI();
+    }
+
     function updateChatMessagesUI() {
       var box = document.getElementById('chat-messages-box');
       if (!box) return;
@@ -3595,19 +3622,28 @@ export function getMobilePreviewHtml(): string {
           var localReactions = messageReactionsMap[m.id] || {};
           var combinedEmojis = Array.from(new Set(Object.keys(reactionMapFromMsg).concat(Object.keys(localReactions))));
 
+          var safeMsgText = (m.text ? m.text.replace(/"/g, '&quot;') : '');
+
           return '<div class="flex items-end gap-1.5 max-w-[85%] ' + (isMe ? 'ml-auto justify-end' : '') + ' group relative">' +
             (!isMe ? '<img src="' + (activeConversation?.avatar || DEFAULT_AVATAR_URL) + '" class="w-6 h-6 rounded-full object-cover shrink-0 mb-0.5 border border-zinc-700">' : '') +
             '<div class="flex flex-col ' + (isMe ? 'items-end' : 'items-start') + '">' +
-              '<div class="' + (isMe ? 'bg-rose-500 text-white rounded-2xl rounded-br-none' : 'bg-zinc-800 text-zinc-100 rounded-2xl rounded-bl-none') + ' p-2.5 text-xs shadow-sm break-words max-w-full relative group">' +
-                replyBlock +
-                displayContent +
-                '<div class="absolute -top-3 ' + (isMe ? 'left-0' : 'right-0') + ' hidden group-hover:flex items-center gap-1 bg-zinc-900 border border-zinc-700 px-1.5 py-0.5 rounded-full shadow-lg z-20">' +
-                  '<button onclick="toggleMessageReaction(&quot;' + m.id + '&quot;, &quot;❤️&quot;)" class="hover:scale-125 transition text-xs">❤️</button>' +
-                  '<button onclick="toggleMessageReaction(&quot;' + m.id + '&quot;, &quot;👍&quot;)" class="hover:scale-125 transition text-xs">👍</button>' +
-                  '<button onclick="toggleMessageReaction(&quot;' + m.id + '&quot;, &quot;😂&quot;)" class="hover:scale-125 transition text-xs">😂</button>' +
-                  '<button onclick="toggleMessageReaction(&quot;' + m.id + '&quot;, &quot;🔥&quot;)" class="hover:scale-125 transition text-xs">🔥</button>' +
-                  '<button onclick="setReplyMessage(&quot;' + m.id + '&quot;, &quot;' + (m.text.replace(/"/g, '&quot;')) + '&quot;, &quot;' + (isMe ? 'You' : (activeConversation?.name || 'User')) + '&quot;)" class="hover:scale-125 transition text-xs text-zinc-300 hover:text-white ml-1" title="Reply"><i class="fa-solid fa-reply"></i></button>' +
-                '</div>' +
+              '<div class="' + (isMe ? 'bg-rose-500 text-white rounded-2xl rounded-br-none' : 'bg-zinc-800 text-zinc-100 rounded-2xl rounded-bl-none') + ' p-2.5 text-xs shadow-sm break-words max-w-full relative"' +
+                ' onmousedown="startMessageHold(&quot;' + m.id + '&quot;)"' +
+                ' onmouseup="cancelMessageHold()" onmouseleave="cancelMessageHold()"' +
+                ' ontouchstart="startMessageHold(&quot;' + m.id + '&quot;)"' +
+                ' ontouchend="cancelMessageHold()" ontouchcancel="cancelMessageHold()">' +
+                replyBlock + displayContent +
+                (activeActionMsgId === m.id ?
+                  '<div class="absolute -top-9 ' + (isMe ? 'left-0' : 'right-0') + ' flex items-center gap-1 bg-zinc-900 border border-zinc-700 px-1.5 py-1 rounded-full shadow-lg z-30">' +
+                    '<button onclick="toggleMessageReaction(&quot;' + m.id + '&quot;, &quot;❤️&quot;); closeMessageActionMenu();" class="hover:scale-125 transition text-sm">❤️</button>' +
+                    '<button onclick="toggleMessageReaction(&quot;' + m.id + '&quot;, &quot;👍&quot;); closeMessageActionMenu();" class="hover:scale-125 transition text-sm">👍</button>' +
+                    '<button onclick="toggleMessageReaction(&quot;' + m.id + '&quot;, &quot;😂&quot;); closeMessageActionMenu();" class="hover:scale-125 transition text-sm">😂</button>' +
+                    '<button onclick="toggleMessageReaction(&quot;' + m.id + '&quot;, &quot;🔥&quot;); closeMessageActionMenu();" class="hover:scale-125 transition text-sm">🔥</button>' +
+                    '<button onclick="setReplyMessage(&quot;' + m.id + '&quot;, &quot;' + safeMsgText + '&quot;, &quot;' + (isMe ? 'You' : (activeConversation?.name || 'User')) + '&quot;); closeMessageActionMenu();" class="text-zinc-300 hover:text-white ml-1 text-xs" title="Reply"><i class="fa-solid fa-reply"></i></button>' +
+                    (isMe && !isDeleted ? '<button onclick="editChatMessage(&quot;' + m.id + '&quot;, &quot;' + safeMsgText + '&quot;); closeMessageActionMenu();" class="text-zinc-300 hover:text-white text-xs" title="Edit"><i class="fa-solid fa-pen"></i></button>' : '') +
+                    (isMe && !isDeleted ? '<button onclick="deleteChatMessage(&quot;' + m.id + '&quot;); closeMessageActionMenu();" class="text-zinc-300 hover:text-rose-400 text-xs" title="Unsend"><i class="fa-solid fa-trash"></i></button>' : '') +
+                    '<button onclick="closeMessageActionMenu()" class="text-zinc-500 hover:text-white text-xs ml-1"><i class="fa-solid fa-xmark"></i></button>' +
+                  '</div>' : '') +
               '</div>' +
               (combinedEmojis.length > 0 ?
                 '<div class="flex gap-1 mt-0.5 px-1 flex-wrap">' +
@@ -3620,8 +3656,6 @@ export function getMobilePreviewHtml(): string {
               '<div class="flex items-center gap-1.5 mt-0.5 px-1 text-[9px] text-zinc-500">' +
                 '<span>' + m.time + '</span>' +
                 (m.isEdited && !isDeleted ? '<span>(edited)</span>' : '') +
-                (isMe && !isDeleted ? '<button onclick="editChatMessage(&quot;' + m.id + '&quot;, &quot;' + (m.text.replace(/"/g, '&quot;')) + '&quot;)" class="hover:text-zinc-300 ml-1" title="Edit"><i class="fa-solid fa-pen text-[8px]"></i></button>' : '') +
-                (isMe && !isDeleted ? '<button onclick="deleteChatMessage(&quot;' + m.id + '&quot;)" class="hover:text-rose-400" title="Delete"><i class="fa-solid fa-trash text-[8px]"></i></button>' : '') +
               '</div>' +
             '</div>' +
           '</div>';
@@ -3652,7 +3686,7 @@ export function getMobilePreviewHtml(): string {
             '<button onclick="startWebRTCCall(&quot;video&quot;)" class="text-zinc-400 p-1.5 hover:text-rose-400 hover:bg-zinc-800 rounded-full transition" title="Start WebRTC Video Call"><i class="fa-solid fa-video text-xs"></i></button>',
           '</div>',
           '<div id="chat-error-banner" class="hidden px-3 py-1.5 bg-rose-500/20 text-rose-300 text-[11px] font-medium border-b border-rose-500/30 flex items-center justify-between"></div>',
-          '<div id="chat-messages-box" class="flex-1 p-3 overflow-y-auto space-y-2.5 bg-zinc-950">',
+          '<div id="chat-messages-box" onclick="closeMessageActionMenu()" class="flex-1 p-3 overflow-y-auto space-y-2.5 bg-zinc-950">',
             '<div class="text-center py-6 text-xs text-zinc-500">Loading chat history...</div>',
           '</div>',
           '<div id="chat-reply-banner" class="hidden px-3 py-1.5 bg-zinc-900 border-t border-zinc-800 text-[11px] text-zinc-300 flex items-center justify-between"></div>',

@@ -591,7 +591,7 @@ export class PostgresMessagingRepository implements MessagingRepository {
     const reactionsMap = new Map<string, Array<{ emoji: string; count: number; reactedByMe: boolean }>>();
     const rxRes = await this.pool.query<{ message_id: string; emoji: string; count: string; reacted_by_me: boolean }>(
       `SELECT message_id, emoji, COUNT(*)::text AS count,
-              COALESCE(LOGICAL_OR(user_id = $2), false) AS reacted_by_me
+              COALESCE(BOOL_OR(user_id = $2), false) AS reacted_by_me
        FROM message_reactions
        WHERE message_id = ANY($1::uuid[])
        GROUP BY message_id, emoji`,

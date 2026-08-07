@@ -290,6 +290,7 @@ export interface CompleteUploadInput {
   widthPx?: number;
   heightPx?: number;
   durationMs?: number;
+  publicUrl?: string;
 }
 
 export interface MediaResponse {

@@ -79,15 +79,15 @@ export function registerMediaRoutes(
         mimeType,
       );
 
-      if (!publicUrl) {
-        await deps.markUploadFailed.execute(auth.userId, initResult.mediaId).catch(() => {});
-        throw new ApplicationError("STORAGE_UNAVAILABLE", "Failed to upload file to storage");
-      }
+      // Fallback: no object storage configured — persist the data URL directly
+      const finalUrl = publicUrl ?? body.dataUrl;
 
       const completed = await deps.completeUpload.execute(
         auth.userId,
         initResult.mediaId,
-        {},
+        {
+          publicUrl: finalUrl,
+        },
       );
 
       return reply.status(201).send(completed);
@@ -118,12 +118,16 @@ export function registerMediaRoutes(
           mimeType,
         );
 
-        if (!publicUrl) {
-          await deps.markUploadFailed.execute(auth.userId, initResult.mediaId).catch(() => {});
-          throw new ApplicationError("STORAGE_UNAVAILABLE", "Failed to upload file to storage");
-        }
+        const finalUrl = publicUrl || body.dataUrl;
 
-        await deps.completeUpload.execute(auth.userId, initResult.mediaId, {});
+        await deps.completeUpload.execute(auth.userId, initResult.mediaId, {
+          publicUrl: finalUrl,
+        });
+
+        return reply.status(201).send({
+          ...initResult,
+          publicUrl: finalUrl,
+        });
       }
 
       return reply.status(201).send({
