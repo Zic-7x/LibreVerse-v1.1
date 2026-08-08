@@ -950,6 +950,77 @@ export interface CreativeCatalogResponse {
   stickers: StickerAsset[];
 }
 
+export interface MediaOverlayContent {
+  text?: string;
+  fontFamily?: string;
+  color?: string;
+  positionX?: number;
+  positionY?: number;
+  rotationDeg?: number;
+  scale?: number;
+  startMs?: number;
+  endMs?: number;
+}
+
+export interface MediaOverlay {
+  id: string;
+  mediaEditId: string;
+  overlayType: OverlayType;
+  stickerAssetId: string | null;
+  content: MediaOverlayContent;
+  zIndex: number;
+  createdAt: string;
+}
+
+export interface MediaEdit {
+  id: string;
+  mediaId: string;
+  filterPresetId: string | null;
+  crop: { x: number; y: number; width: number; height: number } | null;
+  trimStartMs: number | null;
+  trimEndMs: number | null;
+  speed: number;
+  effects: string[];
+  overlays: MediaOverlay[];
+  audio: {
+    audioTrackId: string;
+    startOffsetMs: number;
+    volume: number;
+  } | null;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SaveMediaEditInput {
+  filterPresetId?: string | null;
+  crop?: MediaEdit["crop"];
+  trimStartMs?: number | null;
+  trimEndMs?: number | null;
+  speed?: number;
+  effects?: string[];
+}
+
+export interface UpsertOverlayInput {
+  overlayType: OverlayType;
+  stickerAssetId?: string;
+  content: MediaOverlayContent;
+  zIndex?: number;
+}
+
+export interface AttachAudioInput {
+  audioTrackId: string;
+  startOffsetMs?: number;
+  volume?: number;
+}
+
+export interface MediaEditResponse {
+  edit: MediaEdit;
+}
+
+export interface AudioTrackSearchResponse {
+  tracks: AudioTrack[];
+}
 
 
 
