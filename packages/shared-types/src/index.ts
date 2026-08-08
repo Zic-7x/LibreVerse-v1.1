@@ -891,6 +891,64 @@ export interface ModerationActionResponse {
   sanction?: UserSanction;
 }
 
+/** M19 Creative catalog API contracts */
+
+export const FilterCategory = {
+  Color: "color",
+  Vintage: "vintage",
+  Bw: "bw",
+  Vivid: "vivid",
+  Warm: "warm",
+  Cool: "cool",
+} as const;
+export type FilterCategory =
+  (typeof FilterCategory)[keyof typeof FilterCategory];
+
+export const OverlayType = {
+  Text: "text",
+  Sticker: "sticker",
+  Emoji: "emoji",
+  Drawing: "drawing",
+} as const;
+export type OverlayType = (typeof OverlayType)[keyof typeof OverlayType];
+
+export interface FilterPreset {
+  id: string;
+  name: string;
+  slug: string;
+  category: FilterCategory;
+  config: Record<string, unknown>;
+  thumbnailMediaId: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface StickerAsset {
+  id: string;
+  name: string;
+  category: string;
+  mediaId: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface AudioTrack {
+  id: string;
+  title: string;
+  artist: string | null;
+  sourceMediaId: string;
+  durationMs: number;
+  waveformJson: unknown | null;
+  licenseType: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface CreativeCatalogResponse {
+  filters: FilterPreset[];
+  stickers: StickerAsset[];
+}
 
 
 
