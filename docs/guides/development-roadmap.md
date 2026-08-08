@@ -43,6 +43,11 @@ flowchart LR
   M6 --> M15
   M11 --> M15
   M14 --> M16
+  M18 --> M19 --> M20 --> M21
+  M19 --> M22
+  M20 --> M23
+  M21 --> M23
+  M22 --> M23
 ```
 
 ---
@@ -443,6 +448,98 @@ flowchart LR
 
 ---
 
+## Milestone 19-23 — Creative Studio (filters, overlays, reel editing, music)
+
+## Milestone 19 — Creative catalog foundation
+
+**Scope:** `filter_presets`, `sticker_assets`, `audio_tracks` tables + read-only catalog APIs. **Not in scope:** applying edits to media yet.
+
+| Work | Details |
+|------|---------|
+| Catalog schema | Add `filter_presets`, `sticker_assets`, and `audio_tracks` tables |
+| Catalog APIs | Read-only filter preset, sticker asset, and audio track catalog endpoints |
+
+**Exit criteria:**
+
+- [ ] Migration applies on a fresh database.
+- [ ] API tests cover listing each creative catalog.
+
+**Manual smoke:** Fetch filter presets, sticker assets, and audio tracks from the catalog APIs.
+
+---
+
+## Milestone 20 — Media edit state (photo filters + overlays)
+
+**Scope:** `media_edits` + `media_overlays` tables, save/read edit state for a media item, apply a `filter_preset_id`, add/position text & sticker overlays. **Not in scope:** video-specific fields.
+
+| Work | Details |
+|------|---------|
+| Edit state schema | Add `media_edits` and `media_overlays` tables |
+| Photo editing APIs | Save and read filter preset and overlay state for a media item |
+| Overlays | Add and position text and sticker overlays |
+
+**Exit criteria:**
+
+- [ ] Migration applies on a fresh database.
+- [ ] API tests cover saving and reading edit state, including text and sticker overlays.
+
+**Manual smoke:** Apply a filter and position text and sticker overlays on a media item; reload its edit state.
+
+---
+
+## Milestone 21 — Reel/video editing metadata
+
+**Scope:** `trim_start_ms`/`trim_end_ms`/`speed` on `media_edits`, ordered effect/transition tags. **Not in scope:** server-side video re-encoding.
+
+| Work | Details |
+|------|---------|
+| Video edit metadata | Add trim start/end and speed fields to `media_edits` |
+| Effect and transition tags | Save and read ordered effect and transition tags |
+
+**Exit criteria:**
+
+- [ ] Migration applies on a fresh database.
+- [ ] API tests preserve trim, speed, and effect/transition tag ordering.
+
+**Manual smoke:** Save trim, speed, and ordered effect/transition tags for a reel; reload its edit state.
+
+---
+
+## Milestone 22 — Music & audio attachment
+
+**Scope:** `media_audio_tracks` table, attach an `audio_track` to a media item with start offset + volume, search endpoint for `audio_tracks`. **Not in scope:** audio mixing/export.
+
+| Work | Details |
+|------|---------|
+| Audio attachment schema | Add `media_audio_tracks` table |
+| Audio attachment API | Attach an audio track to media with start offset and volume |
+| Audio search | Search the `audio_tracks` catalog |
+
+**Exit criteria:**
+
+- [ ] Migration applies on a fresh database.
+- [ ] API tests cover audio track search and attachment state.
+
+**Manual smoke:** Search for an audio track, attach it to a media item, and reload its offset and volume.
+
+---
+
+## Milestone 23 — Mobile creative studio client
+
+**Scope:** Mobile use cases/repositories for all of the above, plus a lightweight canvas-based reference renderer demo. **Not in scope:** native AR filters.
+
+| Work | Details |
+|------|---------|
+| Mobile creative repositories | Add mobile use cases and repositories for catalogs, edit state, video metadata, and audio attachment |
+| Reference renderer | Add a lightweight canvas-based demo that renders filter, overlay, reel, and audio edit state |
+
+**Exit criteria:**
+
+- [ ] Mobile use-case tests cover creative catalog, edit state, reel metadata, and audio attachment flows.
+- [ ] Reference renderer demo displays saved edit state.
+
+**Manual smoke:** Select a filter, add an overlay, set reel metadata, attach audio, and view the result in the reference renderer.
+
 ## Suggested timeline (indicative)
 
 | Phase | Milestones | Focus |
@@ -481,6 +578,8 @@ Adjust durations per team size; **do not overlap phases** that introduce two maj
 - Federation or multi-region active-active
 
 Track these as future milestones only after M18, one system at a time.
+
+- Real-time AR/face-tracking filters (Snapchat lenses) — tracked as a future milestone after M23.
 
 ---
 
