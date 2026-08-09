@@ -363,6 +363,12 @@ export function getMobilePreviewHtml(): string {
 
     var activityList = [];
 
+    var creativeFilters = [];
+
+    var creativeStickers = [];
+
+    var creativeAudioTracksCache = [];
+
     function updateClock() {
       var now = new Date();
       var hours = String(now.getHours()).padStart(2, '0');
@@ -491,6 +497,17 @@ export function getMobilePreviewHtml(): string {
       return data;
     }
 
+    async function loadCreativeCatalog() {
+      try {
+        var filtersRes = await apiFetch('/creative/filters');
+        creativeFilters = (filtersRes && filtersRes.filters) || [];
+      } catch (e) { console.warn("Load filters error:", e); }
+      try {
+        var stickersRes = await apiFetch('/creative/stickers');
+        creativeStickers = (stickersRes && stickersRes.stickers) || [];
+      } catch (e) { console.warn("Load stickers error:", e); }
+    }
+
     async function loadUserData() {
       if (!authToken) return;
       try {
@@ -507,6 +524,7 @@ export function getMobilePreviewHtml(): string {
         updateNavProfile();
         await loadSocialGraphData();
         await loadStoriesData();
+        await loadCreativeCatalog();
         connectWebSocket();
       } catch (e) {
         console.warn("User/Profile fetch failed", e);
@@ -1036,9 +1054,10 @@ export function getMobilePreviewHtml(): string {
           var postAv = getValidAvatar(post.avatar, getUserAvatar());
           var postSrc = post.image || post.videoBg || '';
           var isPostVid = post.isVideo || postSrc.startsWith('data:video') || postSrc.includes('.mp4') || postSrc.includes('.webm') || postSrc.includes('.mov');
+          var filterStyleAttr = post.filterCssApplied ? ' style="filter: ' + post.filterCssApplied.replace(/"/g, '&quot;') + ';"' : '';
           var mediaTag = isPostVid ?
-            '<video src="' + postSrc + '" autoplay loop muted playsinline class="w-full h-[360px] object-cover"></video>' :
-            '<img src="' + postSrc + '" class="w-full h-[360px] object-cover">';
+            '<video src="' + postSrc + '" autoplay loop muted playsinline class="w-full h-[360px] object-cover"' + filterStyleAttr + '></video>' :
+            '<img src="' + postSrc + '" class="w-full h-[360px] object-cover"' + filterStyleAttr + '>';
 
           html += '<div id="post-card-' + post.id + '" class="pb-4 pt-2">' +
             '<div class="px-3 py-2 flex items-center justify-between">' +
@@ -1298,6 +1317,7 @@ export function getMobilePreviewHtml(): string {
 
       var storyImg = story.mediaUrl || (story.items && story.items[0] && story.items[0].mediaUrl) || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80';
       var isVideo = story.isVideo || (story.items && story.items[0] && story.items[0].isVideo) || storyImg.startsWith('data:video') || storyImg.includes('.mp4') || storyImg.includes('.webm') || storyImg.includes('.mov') || storyImg.includes('video');
+      var filterStyleAttr = story.filterCssApplied ? ' style="filter: ' + story.filterCssApplied.replace(/"/g, '&quot;') + ';"' : '';
 
       container.innerHTML = [
         '<div class="flex-1 flex flex-col bg-black text-white relative select-none overflow-hidden">',
@@ -1321,8 +1341,8 @@ export function getMobilePreviewHtml(): string {
           '</div>',
           '<div class="absolute inset-0 z-10 flex items-center justify-center bg-zinc-950 overflow-hidden">',
             (isVideo ?
-              '<video src="' + storyImg + '" autoplay loop muted playsinline class="w-full h-full object-cover"></video>' :
-              '<img src="' + storyImg + '" class="w-full h-full object-cover">') +
+              '<video src="' + storyImg + '" autoplay loop muted playsinline class="w-full h-full object-cover"' + filterStyleAttr + '></video>' :
+              '<img src="' + storyImg + '" class="w-full h-full object-cover"' + filterStyleAttr + '>') +
             '<div class="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/80"></div>',
 
             '<div onclick="openStoryViewer(&quot;' + (prevStory ? prevStory.id : story.id) + '&quot;)" class="absolute left-0 top-0 bottom-0 w-1/3 z-20 cursor-pointer"></div>',
@@ -1426,9 +1446,10 @@ export function getMobilePreviewHtml(): string {
       var reel = reelsFeed[currentReelIndex % reelsFeed.length];
       var reelSrc = reel.videoBg || reel.image || '';
       var isReelVid = reel.isVideo || reelSrc.startsWith('data:video') || reelSrc.includes('.mp4') || reelSrc.includes('.webm') || reelSrc.includes('.mov') || reelSrc.includes('video');
+      var filterStyleAttr = reel.filterCssApplied ? ' style="filter: ' + reel.filterCssApplied.replace(/"/g, '&quot;') + ';"' : '';
       var reelMediaTag = isReelVid ?
-        '<video src="' + reelSrc + '" autoplay loop muted playsinline class="w-full h-full object-cover"></video>' :
-        '<img src="' + reelSrc + '" class="w-full h-full object-cover">';
+        '<video id="active-reel-video" src="' + reelSrc + '" autoplay loop muted playsinline class="w-full h-full object-cover"' + filterStyleAttr + '></video>' :
+        '<img src="' + reelSrc + '" class="w-full h-full object-cover"' + filterStyleAttr + '>';
 
       return [
         '<div class="flex-1 flex flex-col bg-black text-white relative select-none overflow-hidden">',
@@ -1479,6 +1500,7 @@ export function getMobilePreviewHtml(): string {
               '<span class="text-[9px] bg-rose-500/30 text-rose-300 px-1.5 py-0.2 rounded font-bold">Use</span>' +
             '</div>',
           '</div>',
+          '<script>(function(){var v=document.getElementById("active-reel-video"); if(v){v.playbackRate=' + (reel.speed || 1) + ';}})();</script>',
         '</div>'
       ].join('');
     }
@@ -1633,6 +1655,10 @@ export function getMobilePreviewHtml(): string {
       var bgClass = isDarkMode ? "bg-black text-white" : "bg-white text-zinc-900";
       selectedReelBg = "";
       selectedReelFile = null;
+      selectedFilterPresetId = null;
+      selectedTrimStartSec = 0;
+      selectedTrimEndSec = null;
+      selectedSpeed = 1.0;
 
       container.innerHTML = [
         '<div class="flex-1 flex flex-col ' + bgClass + ' z-30">',
@@ -1657,6 +1683,29 @@ export function getMobilePreviewHtml(): string {
               '<div id="new-reel-preview-placeholder" class="text-zinc-500 flex flex-col items-center gap-1.5 p-4 text-center">',
                 '<i class="fa-solid fa-film text-2xl text-rose-400"></i>',
                 '<span class="text-xs font-semibold">Media preview will appear here</span>',
+              '</div>',
+            '</div>',
+            '<div>',
+              '<label class="text-xs text-zinc-400 font-semibold block mb-2">Filters</label>',
+              '<div class="flex gap-2 overflow-x-auto pb-1">',
+                creativeFilters.map(function(f) {
+                  return '<button type="button" onclick="applyFilterPreview(&quot;' + f.id + '&quot;, &quot;' + (f.config && f.config.cssFilter ? f.config.cssFilter.replace(/"/g, '&quot;') : '') + '&quot;)" class="shrink-0 px-3 py-1.5 bg-zinc-900 border border-zinc-800 hover:border-rose-500 rounded-xl text-[10px] font-semibold text-zinc-200">' + f.name + '</button>';
+                }).join(''),
+              '</div>',
+            '</div>',
+            '<div class="grid grid-cols-2 gap-2">',
+              '<div>',
+                '<label class="text-[11px] text-zinc-400 font-semibold block mb-1">Trim End (sec)</label>',
+                '<input id="reel-trim-end" type="number" min="1" max="60" step="1" placeholder="e.g. 15" oninput="selectedTrimEndSec = this.value ? parseFloat(this.value) : null;" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-rose-500">',
+              '</div>',
+              '<div>',
+                '<label class="text-[11px] text-zinc-400 font-semibold block mb-1">Speed</label>',
+                '<select id="reel-speed" onchange="selectedSpeed = parseFloat(this.value);" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-rose-500">',
+                  '<option value="0.5">0.5x</option>',
+                  '<option value="1" selected>1x</option>',
+                  '<option value="1.5">1.5x</option>',
+                  '<option value="2">2x</option>',
+                '</select>',
               '</div>',
             '</div>',
             '<div>',
@@ -1705,6 +1754,15 @@ export function getMobilePreviewHtml(): string {
             method: 'POST',
             body: JSON.stringify({ widthPx: 1080, heightPx: 1920 })
           });
+          var appliedFilterCss = '';
+          var editPayload = { speed: selectedSpeed || 1 };
+          if (selectedFilterPresetId) editPayload.filterPresetId = selectedFilterPresetId;
+          if (selectedTrimEndSec) { editPayload.trimStartMs = Math.round((selectedTrimStartSec || 0) * 1000); editPayload.trimEndMs = Math.round(selectedTrimEndSec * 1000); }
+          try {
+            await apiFetch('/media/' + uploadRes.mediaId + '/edit', { method: 'POST', body: JSON.stringify(editPayload) });
+            var chosenFilter = creativeFilters.find(function(f) { return f.id === selectedFilterPresetId; });
+            appliedFilterCss = (chosenFilter && chosenFilter.config && chosenFilter.config.cssFilter) || '';
+          } catch (e) { console.warn("Apply reel edit error:", e); }
         }
       } catch(e) {
         console.warn("Reel upload media init error:", e);
@@ -1722,6 +1780,9 @@ export function getMobilePreviewHtml(): string {
         videoBg: finalMediaUrl,
         image: finalMediaUrl,
         isVideo: isVid,
+        filterCssApplied: appliedFilterCss,
+        speed: selectedSpeed || 1,
+        trimEndSec: selectedTrimEndSec,
         audioTrack: audio,
         likesCount: 1,
         liked: true,
@@ -2437,6 +2498,11 @@ export function getMobilePreviewHtml(): string {
 
     var selectedImgUrl = "";
     var selectedPostFile = null;
+    var selectedFilterPresetId = null;
+    var pendingOverlays = [];
+    var selectedTrimStartSec = 0;
+    var selectedTrimEndSec = null;
+    var selectedSpeed = 1.0;
 
     function updatePostPreview(dataUrl, file) {
       selectedImgUrl = dataUrl;
@@ -2489,6 +2555,8 @@ export function getMobilePreviewHtml(): string {
       var bgClass = isDarkMode ? "bg-black text-white" : "bg-white text-zinc-900";
       selectedImgUrl = "";
       selectedPostFile = null;
+      selectedFilterPresetId = null;
+      pendingOverlays = [];
 
       container.innerHTML = [
         '<div class="flex-1 flex flex-col ' + bgClass + ' z-30">',
@@ -2516,6 +2584,22 @@ export function getMobilePreviewHtml(): string {
               '</div>',
             '</div>',
             '<div>',
+              '<label class="text-xs text-zinc-400 font-semibold block mb-2">Filters</label>',
+              '<div class="flex gap-2 overflow-x-auto pb-1">',
+                creativeFilters.map(function(f) {
+                  return '<button type="button" onclick="applyFilterPreview(&quot;' + f.id + '&quot;, &quot;' + (f.config && f.config.cssFilter ? f.config.cssFilter.replace(/"/g, '&quot;') : '') + '&quot;)" class="shrink-0 px-3 py-1.5 bg-zinc-900 border border-zinc-800 hover:border-rose-500 rounded-xl text-[10px] font-semibold text-zinc-200">' + f.name + '</button>';
+                }).join(''),
+              '</div>',
+            '</div>',
+            '<div>',
+              '<label class="text-xs text-zinc-400 font-semibold block mb-2">Add Text</label>',
+              '<div class="flex gap-2">',
+                '<input id="overlay-text-input" type="text" placeholder="Tap to add caption text..." class="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500">',
+                '<button type="button" onclick="addPendingTextOverlay()" class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-xs font-semibold text-white">Add</button>',
+              '</div>',
+              '<div id="pending-overlays-list" class="flex gap-1.5 flex-wrap mt-2"></div>',
+            '</div>',
+            '<div>',
               '<label class="text-xs text-zinc-400 font-semibold block mb-1">Write a caption...</label>',
               '<textarea id="new-post-caption" rows="3" placeholder="Write caption and add hashtags #travel #photography..." class="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-xs text-zinc-100 focus:outline-none focus:border-rose-500"></textarea>',
             '</div>',
@@ -2526,6 +2610,40 @@ export function getMobilePreviewHtml(): string {
           '</div>',
         '</div>'
       ].join('');
+    }
+
+    function applyFilterPreview(filterId, cssFilter) {
+      selectedFilterPresetId = filterId;
+      var img = document.getElementById('new-post-preview');
+      var vid = document.getElementById('new-post-preview-video');
+      var storyImg = document.getElementById('new-story-preview');
+      var storyVid = document.getElementById('new-story-preview-video');
+      var reelImg = document.getElementById('new-reel-preview');
+      var reelVid = document.getElementById('new-reel-preview-video');
+      if (img && !img.classList.contains('hidden')) img.style.filter = cssFilter || '';
+      if (vid && !vid.classList.contains('hidden')) vid.style.filter = cssFilter || '';
+      if (storyImg && !storyImg.classList.contains('hidden')) storyImg.style.filter = cssFilter || '';
+      if (storyVid && !storyVid.classList.contains('hidden')) storyVid.style.filter = cssFilter || '';
+      if (reelImg && !reelImg.classList.contains('hidden')) reelImg.style.filter = cssFilter || '';
+      if (reelVid && !reelVid.classList.contains('hidden')) reelVid.style.filter = cssFilter || '';
+    }
+
+    function addPendingTextOverlay() {
+      var input = document.getElementById('overlay-text-input');
+      var value = input.value;
+      if (!value) return;
+      pendingOverlays.push({ overlayType: 'text', content: { text: value, positionX: 50, positionY: 80, color: '#ffffff', fontFamily: 'sans-serif' }, zIndex: pendingOverlays.length });
+      input.value = '';
+      document.getElementById('pending-overlays-list').innerHTML = pendingOverlays.map(function(o, idx) {
+        return '<span class="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded-full text-[10px] text-zinc-200">' + (o.content.text || o.overlayType) + ' <button type="button" onclick="removePendingOverlay(' + idx + ')" class="text-zinc-500 hover:text-rose-400 ml-1">&times;</button></span>';
+      }).join('');
+    }
+
+    function removePendingOverlay(idx) {
+      pendingOverlays.splice(idx, 1);
+      document.getElementById('pending-overlays-list').innerHTML = pendingOverlays.map(function(o, idx) {
+        return '<span class="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded-full text-[10px] text-zinc-200">' + (o.content.text || o.overlayType) + ' <button type="button" onclick="removePendingOverlay(' + idx + ')" class="text-zinc-500 hover:text-rose-400 ml-1">&times;</button></span>';
+      }).join('');
     }
 
     async function submitNewPost() {
@@ -2564,6 +2682,27 @@ export function getMobilePreviewHtml(): string {
             method: 'POST',
             body: JSON.stringify({ widthPx: 800, heightPx: 800 })
           });
+          var appliedFilterCss = '';
+          if (selectedFilterPresetId) {
+            try {
+              await apiFetch('/media/' + mediaId + '/edit', {
+                method: 'POST',
+                body: JSON.stringify({ filterPresetId: selectedFilterPresetId })
+              });
+              var chosenFilter = creativeFilters.find(function(f) { return f.id === selectedFilterPresetId; });
+              appliedFilterCss = (chosenFilter && chosenFilter.config && chosenFilter.config.cssFilter) || '';
+            } catch (e) { console.warn("Apply filter error:", e); }
+          }
+          var savedOverlays = [];
+          for (var oi = 0; oi < pendingOverlays.length; oi++) {
+            try {
+              var ovRes = await apiFetch('/media/' + mediaId + '/overlays', {
+                method: 'POST',
+                body: JSON.stringify(pendingOverlays[oi])
+              });
+              if (ovRes && ovRes.overlay) savedOverlays.push(ovRes.overlay);
+            } catch (e) { console.warn("Save overlay error:", e); }
+          }
         }
       } catch (e) {
         console.warn("Backend media init error, proceeding with local post:", e);
@@ -2580,6 +2719,8 @@ export function getMobilePreviewHtml(): string {
         image: finalPostUrl,
         videoBg: isVid ? finalPostUrl : null,
         isVideo: isVid,
+        filterCssApplied: appliedFilterCss,
+        overlays: savedOverlays,
         likesCount: 1,
         liked: true,
         saved: false,
@@ -2666,6 +2807,7 @@ export function getMobilePreviewHtml(): string {
       var bgClass = isDarkMode ? "bg-black text-white" : "bg-white text-zinc-900";
       selectedStoryUrl = "";
       selectedStoryFile = null;
+      selectedFilterPresetId = null;
 
       container.innerHTML = [
         '<div class="flex-1 flex flex-col ' + bgClass + ' z-30">',
@@ -2690,6 +2832,14 @@ export function getMobilePreviewHtml(): string {
               '<div id="new-story-preview-placeholder" class="text-zinc-500 flex flex-col items-center gap-1.5 p-4 text-center">',
                 '<i class="fa-solid fa-cloud-arrow-up text-2xl text-rose-400"></i>',
                 '<span class="text-xs font-semibold">Story preview will appear here</span>',
+              '</div>',
+            '</div>',
+            '<div>',
+              '<label class="text-xs text-zinc-400 font-semibold block mb-2">Filters</label>',
+              '<div class="flex gap-2 overflow-x-auto pb-1">',
+                creativeFilters.map(function(f) {
+                  return '<button type="button" onclick="applyFilterPreview(&quot;' + f.id + '&quot;, &quot;' + (f.config && f.config.cssFilter ? f.config.cssFilter.replace(/"/g, '&quot;') : '') + '&quot;)" class="shrink-0 px-3 py-1.5 bg-zinc-900 border border-zinc-800 hover:border-rose-500 rounded-xl text-[10px] font-semibold text-zinc-200">' + f.name + '</button>';
+                }).join(''),
               '</div>',
             '</div>',
             '<div>',
@@ -2735,6 +2885,17 @@ export function getMobilePreviewHtml(): string {
             method: 'POST',
             body: JSON.stringify({ widthPx: 800, heightPx: 800, durationMs: isVid ? 15000 : 5000 })
           });
+          var appliedFilterCss = '';
+          if (selectedFilterPresetId) {
+            try {
+              await apiFetch('/media/' + mediaId + '/edit', {
+                method: 'POST',
+                body: JSON.stringify({ filterPresetId: selectedFilterPresetId })
+              });
+              var chosenFilter = creativeFilters.find(function(f) { return f.id === selectedFilterPresetId; });
+              appliedFilterCss = (chosenFilter && chosenFilter.config && chosenFilter.config.cssFilter) || '';
+            } catch (e) { console.warn("Apply filter error:", e); }
+          }
           await apiFetch('/stories', {
             method: 'POST',
             body: JSON.stringify({
@@ -2760,6 +2921,7 @@ export function getMobilePreviewHtml(): string {
         caption: caption,
         mediaUrl: finalStoryUrl,
         isVideo: isVid,
+        filterCssApplied: appliedFilterCss,
         items: [{ mediaId: mediaId, mediaUrl: finalStoryUrl, durationMs: isVid ? 15000 : 5000, isVideo: isVid }],
         viewsCount: 0,
         createdAt: new Date().toISOString()

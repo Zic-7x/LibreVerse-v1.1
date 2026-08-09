@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  AddOverlayUseCase,
   ApiClient,
   ApiConfig,
   AppShellController,
+  AttachAudioUseCase,
   AuthScreen,
   AuthSessionManager,
   checkBackendHealth,
@@ -13,7 +15,9 @@ import {
   CreateCommunityUseCase,
   CreateDirectConversationUseCase,
   CreateStoryUseCase,
+  CreativeEditorScreen,
   ErrorBoundaryController,
+  GetMediaEditUseCase,
   GetMeUseCase,
   GetMessagesUseCase,
   GetStoryFeedUseCase,
@@ -23,7 +27,9 @@ import {
   JoinCommunityUseCase,
   ListChannelsUseCase,
   ListConversationsUseCase,
+  ListFiltersUseCase,
   ListPublicCommunitiesUseCase,
+  ListStickersUseCase,
   ListUserCommunitiesUseCase,
   LoginUseCase,
   LogoutUseCase,
@@ -32,6 +38,10 @@ import {
   RefreshTokenUseCase,
   RegisterPushDeviceUseCase,
   RegisterUseCase,
+  RemoveAudioUseCase,
+  RemoveOverlayUseCase,
+  SaveMediaEditUseCase,
+  SearchAudioTracksUseCase,
   SecureTokenStorageAdapter,
   ClaimAliasUseCase,
   GetProfileByAliasUseCase,
@@ -661,6 +671,51 @@ describe("Mobile Client Architecture Unit Tests (FM0 & M1-M17)", () => {
 
     const viewers = await screen.loadViewers("token-1", "story-1");
     expect(viewers).toHaveLength(1);
+  });
+
+  it("M23 CreativeEditorScreen manages creative catalog, edits, overlays, and music", async () => {
+    const filters = [{ id: "filter-1", name: "Warm" }];
+    const mockCreativeRepo = {
+      listFilters: vi.fn().mockResolvedValue(filters),
+      listStickers: vi.fn().mockResolvedValue([]),
+      searchAudioTracks: vi.fn().mockResolvedValue([]),
+      saveMediaEdit: vi.fn().mockResolvedValue({ id: "edit-1" }),
+      getMediaEdit: vi.fn().mockResolvedValue({ id: "edit-1" }),
+      addOverlay: vi.fn().mockResolvedValue({ id: "overlay-1" }),
+      removeOverlay: vi.fn().mockResolvedValue(undefined),
+      attachAudio: vi.fn().mockResolvedValue(undefined),
+      removeAudio: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const screen = new CreativeEditorScreen(
+      new ListFiltersUseCase(mockCreativeRepo),
+      new ListStickersUseCase(mockCreativeRepo),
+      new SearchAudioTracksUseCase(mockCreativeRepo),
+      new SaveMediaEditUseCase(mockCreativeRepo),
+      new GetMediaEditUseCase(mockCreativeRepo),
+      new AddOverlayUseCase(mockCreativeRepo),
+      new RemoveOverlayUseCase(mockCreativeRepo),
+      new AttachAudioUseCase(mockCreativeRepo),
+      new RemoveAudioUseCase(mockCreativeRepo),
+    );
+    const token = "token-1";
+    const mediaId = "media-1";
+
+    await expect(screen.loadFilters(token)).resolves.toEqual(filters);
+
+    await screen.applyFilter(token, mediaId, "filter-1");
+    expect(mockCreativeRepo.saveMediaEdit).toHaveBeenCalledWith(token, mediaId, { filterPresetId: "filter-1" });
+
+    await screen.addTextOverlay(token, mediaId, "Hello", 0.1, 0.2);
+    expect(mockCreativeRepo.addOverlay).toHaveBeenCalledWith(token, mediaId, {
+      overlayType: "text",
+      stickerAssetId: null,
+      content: { text: "Hello", positionX: 0.1, positionY: 0.2 },
+      zIndex: 0,
+    });
+
+    await screen.setMusic(token, mediaId, "track-1", 500, 0.8);
+    expect(mockCreativeRepo.attachAudio).toHaveBeenCalledWith(token, mediaId, "track-1", 500, 0.8);
   });
 
   it("M17 PushNotificationHandler registers push tokens and parses deep links", async () => {

@@ -25,7 +25,9 @@ import {
   PostgresDatabaseProbe,
 } from "../infrastructure/persistence/postgres-pool.js";
 import { PostgresCommunityRepository } from "../infrastructure/persistence/postgres-community-repository.js";
+import { PostgresCreativeRepository } from "../infrastructure/persistence/postgres-creative-repository.js";
 import { PostgresDeviceRepository } from "../infrastructure/persistence/postgres-device-repository.js";
+import { PostgresMediaEditRepository } from "../infrastructure/persistence/postgres-media-edit-repository.js";
 import { PostgresFriendshipRepository } from "../infrastructure/persistence/postgres-friendship-repository.js";
 import { PostgresMediaRepository } from "../infrastructure/persistence/postgres-media-repository.js";
 import { PostgresMediaVariantRepository } from "../infrastructure/persistence/postgres-media-variant-repository.js";
@@ -46,6 +48,18 @@ import { registerAuthRoutes } from "../presentation/http/routes/auth-routes.js";
 import { registerCommunityRoutes } from "../presentation/http/routes/community-routes.js";
 import { registerFriendshipRoutes } from "../presentation/http/routes/friendship-routes.js";
 import { registerHealthRoutes } from "../presentation/http/routes/health-routes.js";
+import {
+  registerCreativeRoutes,
+  type CreativeRouteDeps,
+} from "../presentation/http/routes/creative-routes.js";
+import {
+  registerMediaAudioRoutes,
+  type MediaAudioRouteDeps,
+} from "../presentation/http/routes/media-audio-routes.js";
+import {
+  registerMediaEditRoutes,
+  type MediaEditRouteDeps,
+} from "../presentation/http/routes/media-edit-routes.js";
 import { registerMediaRoutes } from "../presentation/http/routes/media-routes.js";
 import { registerMessagingRoutes } from "../presentation/http/routes/messaging-routes.js";
 import { registerProfileRoutes } from "../presentation/http/routes/profile-routes.js";
@@ -139,6 +153,21 @@ import {
   ToggleMessageReactionUseCase,
   UpdateParticipantSettingsUseCase,
 } from "../application/use-cases/messaging/messaging-use-cases.js";
+import {
+  ListFilterPresetsUseCase,
+  ListStickerAssetsUseCase,
+  SearchAudioTracksUseCase,
+} from "../application/use-cases/creative/creative-catalog-use-cases.js";
+import {
+  AddOverlayUseCase,
+  GetMediaEditUseCase,
+  RemoveOverlayUseCase,
+  SaveMediaEditUseCase,
+} from "../application/use-cases/creative/media-edit-use-cases.js";
+import {
+  AttachAudioToMediaUseCase,
+  RemoveAudioFromMediaUseCase,
+} from "../application/use-cases/creative/media-audio-use-cases.js";
 
 export interface AppContainer {
   app: ReturnType<typeof Fastify>;
@@ -214,6 +243,8 @@ export async function createApp(config: AppConfig): Promise<AppContainer> {
   const aliases = new PostgresPublicAliasRepository(pool);
   const mediaRepo = new PostgresMediaRepository(pool);
   const variantRepo = new PostgresMediaVariantRepository(pool);
+  const creativeRepo = new PostgresCreativeRepository(pool);
+  const mediaEditRepo = new PostgresMediaEditRepository(pool);
   const friendshipsRepo = new PostgresFriendshipRepository(pool);
   const messagingRepo = new PostgresMessagingRepository(pool);
   const communityRepo = new PostgresCommunityRepository(pool);
@@ -283,6 +314,26 @@ export async function createApp(config: AppConfig): Promise<AppContainer> {
   const markUploadFailed = new MarkUploadFailedUseCase(mediaRepo);
   const getMedia = new GetMediaUseCase(mediaRepo, variantRepo);
   const deleteMedia = new DeleteMediaUseCase(mediaRepo);
+  const listFilterPresets = new ListFilterPresetsUseCase(creativeRepo);
+  const listStickerAssets = new ListStickerAssetsUseCase(creativeRepo);
+  const searchAudioTracks = new SearchAudioTracksUseCase(creativeRepo);
+  const saveMediaEdit = new SaveMediaEditUseCase(
+    mediaRepo,
+    mediaEditRepo,
+    creativeRepo,
+  );
+  const getMediaEdit = new GetMediaEditUseCase(mediaEditRepo);
+  const addOverlay = new AddOverlayUseCase(mediaRepo, mediaEditRepo);
+  const removeOverlay = new RemoveOverlayUseCase(mediaRepo, mediaEditRepo);
+  const attachAudio = new AttachAudioToMediaUseCase(
+    mediaRepo,
+    mediaEditRepo,
+    creativeRepo,
+  );
+  const removeAudio = new RemoveAudioFromMediaUseCase(
+    mediaRepo,
+    mediaEditRepo,
+  );
 
   const sendFriendRequest = new SendFriendRequestUseCase(
     friendshipsRepo,
@@ -443,6 +494,27 @@ export async function createApp(config: AppConfig): Promise<AppContainer> {
       accessTokens,
       users,
     });
+    registerCreativeRoutes(instance, {
+      listFilterPresets,
+      listStickerAssets,
+      searchAudioTracks,
+      accessTokens,
+      users,
+    } satisfies CreativeRouteDeps);
+    registerMediaEditRoutes(instance, {
+      saveMediaEdit,
+      getMediaEdit,
+      addOverlay,
+      removeOverlay,
+      accessTokens,
+      users,
+    } satisfies MediaEditRouteDeps);
+    registerMediaAudioRoutes(instance, {
+      attachAudio,
+      removeAudio,
+      accessTokens,
+      users,
+    } satisfies MediaAudioRouteDeps);
     registerFriendshipRoutes(instance, {
       sendFriendRequest,
       respondFriendRequest,

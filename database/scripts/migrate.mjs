@@ -6,9 +6,7 @@ import pg from "pg";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const migrationsDir = path.join(__dirname, "..", "migrations");
 
-const connectionString =
-  process.env.DATABASE_URL ??
-  "postgresql://platform:platform@127.0.0.1:5432/platform";
+const connectionString = process.env.DATABASE_URL;s
 
 const sslConfig =
   connectionString.includes("localhost") || connectionString.includes("127.0.0.1")

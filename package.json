@@ -13,6 +13,7 @@
     "lint": "eslint .",
     "test": "npm run test --workspaces --if-present",
     "db:migrate": "node database/scripts/migrate.mjs",
+    "db:seed:creative": "node database/scripts/seed-creative-catalog.mjs",
     "dev": "npm run dev -w @platform/backend",
     "dev:backend": "npm run dev -w @platform/backend"
   },
